@@ -68,6 +68,7 @@
                        :increment)
   (arr:execute-task-at (+ (get-universal-time) 4)
                        :increment)
+  (5am:is-true (= 0 *incr*))
   (sleep 3)
   (5am:is-true (= 1 *incr*))
   (sleep 4)

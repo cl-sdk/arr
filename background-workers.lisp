@@ -13,9 +13,11 @@
              (case (car command)
                (:immediate (task-execute (second command) (third command)
                                          :time current-time))
-               (:scheduled-tasks (sb-concurrency:enqueue
-                          (cdr command)
-                          (task-runner-state-scheduled-tasks-queue state))))))
+               (:scheduled-tasks (setf
+                                  (task-runner-state-scheduled-tasks-queue state)
+                                  (append
+                                   (list (cdr command))
+                                   (task-runner-state-scheduled-tasks-queue state)))))))
     (let ((current-time (get-universal-time)))
       (loop
         (handler-case
@@ -29,17 +31,16 @@
                       (process-message state
                                        current-time
                                        (sb-concurrency:receive-message m))))
-                (let ((queue (task-runner-state-scheduled-tasks-queue state))
-                      (next-queue))
-                  (loop for task = (sb-concurrency:dequeue queue)
-                        while task
-                        do (let ((diff (- (car task) current-time)))
-                             (if (<= diff 0)
+                (setf
+                 (task-runner-state-scheduled-tasks-queue state)
+                 (reduce (lambda (acc task)
+                           (if (> (- (car task) current-time) 0)
+                               (append (list task) acc)
+                               (prog1 acc
                                  (task-execute (second task) (third task)
-                                               :time current-time)
-                                 (setf next-queue (pushnew task next-queue)))))
-                  (loop for task in next-queue
-                        do (sb-concurrency:enqueue task queue)))
+                                               :time current-time))))
+                         (task-runner-state-scheduled-tasks-queue state)
+                         :initial-value nil))
                 (setf current-time (get-universal-time))))
           (t (err)
             (log:error "[arr] ~A" err)))))))
@@ -52,9 +53,7 @@
     (setf +runner+
           (make-task-runner-state
            :lock (sb-thread:make-mutex)
-           :mailbox (sb-concurrency:make-mailbox :name "task-runner-main-thread-mailbox")
-           :main-worker nil
-           :scheduled-tasks-queue (sb-concurrency:make-queue :name "task-runner-scheduled-tasks-queue"))
+           :mailbox (sb-concurrency:make-mailbox :name "task-runner-main-thread-mailbox"))
           (task-runner-state-main-worker +runner+)
           (bt2:make-thread (lambda () (%runner +runner+))))
     t))

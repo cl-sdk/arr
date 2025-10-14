@@ -5,7 +5,7 @@
   (mailbox nil :type sb-concurrency:mailbox)
   (running t :type boolean)
   (main-worker nil :type (or bt2:thread null))
-  (scheduled-tasks-queue nil :type sb-concurrency:queue))
+  (scheduled-tasks-queue nil :type list))
 
 (defun task-runner-running-p (state)
   (not (null (task-runner-state-running state))))
