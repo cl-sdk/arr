@@ -3,23 +3,42 @@
 (defparameter +runner+ nil
   "Global instance of the task-runner.")
 
-(defun %runner (state)
-  "Private runner worker function to execute tasks.
-
- Tasks are in the form (time kind &rest data)"
+(defmethod task-runner ((state task-runner-state) &key &allow-other-keys)
   (labels ((thread-sleep () (sleep .1)))
     (loop
       (handler-case
           (loop for task = (sb-concurrency:dequeue (task-runner-state-queue state))
                 while task
-                do (destructuring-bind (time kind data)
+                do (destructuring-bind (scheduled-time time (kind &rest data))
                        task
-                     (task-execute kind data :time time)))
+                     (task kind data :time time)))
         (t (err)
           (log:error "[arr:runner] ~A" err)))
       (thread-sleep))))
 
-(defun %scheduler (state)
+(defmethod schedule-task ((kind (eql :immediate))
+                          scheduled-time
+                          data
+                          &key
+                            state
+                          &allow-other-keys)
+  (sb-concurrency:enqueue
+   (list scheduled-time scheduled-time data)
+   (task-runner-state-queue state)))
+
+(defmethod schedule-task ((kind (eql :scheduled-tasks))
+                          scheduled-time
+                          data
+                          &key
+                            state
+                          &allow-other-keys)
+  (setf
+   (task-runner-state-scheduled-tasks-queue state)
+   (append
+    (list (list scheduled-time (car data) (cdr data)))
+    (task-runner-state-scheduled-tasks-queue state))))
+
+(defmethod task-scheduler ((state task-runner-state) &key &allow-other-keys)
   "Private scheduler function to manage tasks.
 
  It controls time and schedule tasks to be executed.
@@ -29,38 +48,33 @@
    - (:immediate data) - goes to the immediate queue.
    - (:scheduled-tasks time data) - goes to the scheduled queue.
 
- `data` is an implementation of the generic `arr:task-execute`."
+ `data` is an implementation of the generic `arr:task`."
   (labels ((thread-sleep () (sleep .1))
-           (process-message (state current-time command)
-             (case (car command)
-               (:immediate (sb-concurrency:enqueue
-                            (list current-time (cadr command) (cddr command))
-                            (task-runner-state-queue state)))
-               (:scheduled-tasks (setf
-                                  (task-runner-state-scheduled-tasks-queue state)
-                                  (append
-                                   (list (cdr command))
-                                   (task-runner-state-scheduled-tasks-queue state)))))))
+           (schedule (state current-time)
+             (let ((m (task-runner-state-mailbox state)))
+               (loop for task in (sb-concurrency:receive-pending-messages m)
+                     do (schedule-task (car task) current-time (cdr task)
+                                       :state state))))
+           (dispatch (state current-time)
+             (setf
+              (task-runner-state-scheduled-tasks-queue state)
+              (reduce (lambda (acc task)
+                        (if (> (- (second task) current-time) 0)
+                            (append (list task) acc)
+                            (prog1 acc
+                              (sb-concurrency:enqueue
+                               task
+                               (task-runner-state-queue state)))))
+                      (task-runner-state-scheduled-tasks-queue state)
+                      :initial-value nil))))
     (let ((current-time (get-universal-time)))
       (loop
         (handler-case
             (progn
               (with-task-runner-state-lock state
                 (when (task-runner-state-running state)
-                  (let ((m (task-runner-state-mailbox state)))
-                    (loop for task in (sb-concurrency:receive-pending-messages m)
-                          do (process-message state current-time task)))
-                  (setf
-                   (task-runner-state-scheduled-tasks-queue state)
-                   (reduce (lambda (acc task)
-                             (if (> (- (car task) current-time) 0)
-                                 (append (list task) acc)
-                                 (prog1 acc
-                                   (sb-concurrency:enqueue
-                                    task
-                                    (task-runner-state-queue state)))))
-                           (task-runner-state-scheduled-tasks-queue state)
-                           :initial-value nil)))
+                  (schedule state current-time)
+                  (dispatch state current-time))
                 (setf current-time (get-universal-time)))
               (thread-sleep))
           (t (err)
@@ -75,9 +89,9 @@
            :mailbox (sb-concurrency:make-mailbox :name "task-runner-main-thread-mailbox")
            :queue (sb-concurrency:make-queue :name "task-runner-queue"))
           (task-runner-state-main-worker +runner+)
-          (bt2:make-thread (lambda () (%scheduler +runner+)))
+          (bt2:make-thread (lambda () (funcall #'task-scheduler +runner+)))
           (task-runner-state-worker +runner+)
-          (bt2:make-thread (lambda () (%runner +runner+))))
+          (bt2:make-thread (lambda () (funcall #'task-runner +runner+))))
     t))
 
 (defun stop-thread ()

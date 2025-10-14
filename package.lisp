@@ -3,8 +3,11 @@
   (:export
    #:start-thread
    #:stop-thread
-   #:task-execute
    #:execute-task
-   #:execute-task-at))
+   #:execute-task-at
+   #:task
+   #:schedule-task
+   #:task-runner
+   #:task-scheduler))
 
 (in-package :arr)

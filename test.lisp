@@ -6,25 +6,26 @@
 (5am:def-suite* arr.suite
   :description "arr tests.")
 
-(defparameter *test-lock* (bordeaux-threads-2:make-lock :name "test-lock"))
+(defparameter *test-lock*
+  (bordeaux-threads-2:make-lock :name "test-lock"))
 
 (defparameter *executed* 0)
 
-(defmethod arr:task-execute ((kind (eql :testing)) data &key time &allow-other-keys)
+(defmethod arr:task ((kind (eql :testing)) data &key time &allow-other-keys)
   t)
 
-(defmethod arr:task-execute ((kind (eql :increment)) data &key time &allow-other-keys)
+(defmethod arr:task ((kind (eql :increment)) data &key time &allow-other-keys)
   (log:info ":increment at ~a and run at ~a~%" time (- time (get-universal-time)))
   (bt2:with-lock-held (*test-lock*)
     (incf *executed*)))
 
-(defmethod arr:task-execute ((kind (eql :raise-condition)) data &key time &allow-other-keys)
+(defmethod arr:task ((kind (eql :raise-condition)) data &key time &allow-other-keys)
   (declare (ignorable data))
   (log:info ":raise-condition at ~a and run at ~a~%" time (- time (get-universal-time)))
   (error "condition raised"))
 
 (5am:def-test define-a-new-instance-to-execute ()
-  (5am:is-true (arr:task-execute :testing nil)))
+  (5am:is-true (arr:task :testing nil)))
 
 (5am:def-test enqueue-a-task-to-be-executed-immediately ()
   (5am:is-true (= 0 *executed*))

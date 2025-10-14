@@ -30,6 +30,3 @@
     (sb-concurrency:send-message
      (task-runner-state-mailbox +runner+)
      (list :scheduled-tasks time kind data))))
-
-(defgeneric task-execute (kind data &key time &allow-other-keys)
-  (:documentation "Implementation of a task."))
