@@ -8,24 +8,39 @@
    - (:stop) - stop the execution
    - (:immediate data) - goes to the immediate queue.
    - (:delayed time data) - goes to the scheduled queue."
-  (labels ((thread-sleep () (sleep .1) (bt2:thread-yield)))
-    (let ((current-time (local-time:now)))
+  (labels ((thread-sleep () (sleep .1) (bt2:thread-yield))
+           (process-message (state current-time command)
+             (case (car command)
+               (:immediate (task-execute (second command) (third command)
+                                         :time current-time))
+               (:delayed (sb-concurrency:enqueue
+                          (cdr command)
+                          (task-runner-state-delayed-queue state))))))
+    (let ((current-time (get-universal-time)))
       (loop
         (handler-case
             (progn
               (with-task-runner-state-lock state
                 (if (not (task-runner-state-running state))
-                    (thread-sleep)))
-              (let ((m (task-runner-state-mailbox state)))
-                (if (= 0 (sb-concurrency:mailbox-count m))
-                    (thread-sleep)
-                    (let ((command-msg (sb-concurrency:receive-message m)))
-                      (destructuring-bind (kind &rest data)
-                          command-msg
-                        (case kind
-                          (:immediate (task-execute (car data) (cdr data) :time current-time))
-                          (:delayed (error "to be implemented.")))))))
-              (setf current-time (local-time:now)))
+                    (thread-sleep))
+                (let ((m (task-runner-state-mailbox state)))
+                  (if (= 0 (sb-concurrency:mailbox-count m))
+                      (thread-sleep)
+                      (process-message state
+                                       current-time
+                                       (sb-concurrency:receive-message m))))
+                (let ((queue (task-runner-state-delayed-queue state))
+                      (next-queue))
+                  (loop for task = (sb-concurrency:dequeue queue)
+                        while task
+                        do (let ((diff (- (car task) current-time)))
+                             (if (<= diff 0)
+                                 (task-execute (second task) (third task)
+                                               :time current-time)
+                                 (setf next-queue (pushnew task next-queue)))))
+                  (loop for task in next-queue
+                        do (sb-concurrency:enqueue task queue)))
+                (setf current-time (get-universal-time))))
           (t (err)
             (log:error "[arr] ~A" err)))))))
 
@@ -38,7 +53,8 @@
           (make-task-runner-state
            :lock (sb-thread:make-mutex)
            :mailbox (sb-concurrency:make-mailbox :name "task-runner-main-thread-mailbox")
-           :main-worker nil)
+           :main-worker nil
+           :delayed-queue (sb-concurrency:make-queue :name "task-runner-delayed-queue"))
           (task-runner-state-main-worker +runner+)
           (bt2:make-thread (lambda () (%runner +runner+))))
     t))

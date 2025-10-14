@@ -5,7 +5,7 @@
   (mailbox nil :type sb-concurrency:mailbox)
   (running t :type boolean)
   (main-worker nil :type (or bt2:thread null))
-  (workers nil :type list))
+  (delayed-queue nil :type sb-concurrency:queue))
 
 (defun task-runner-running-p (state)
   (not (null (task-runner-state-running state))))
@@ -20,7 +20,7 @@
      (task-runner-state-mailbox +runner+)
      (list :immediate kind data))))
 
-(defun execute-task-at (kind time &optional data)
+(defun execute-task-at (time kind &optional data)
   (with-task-runner-state-lock +runner+
     (sb-concurrency:send-message
      (task-runner-state-mailbox +runner+)
