@@ -12,7 +12,7 @@
 
 (setf *debugger-hook*
       (lambda (c h)
-        (declare (ignore c h))
+        (log:error c h)
         (uiop:quit -1))
       fiveam:*on-error* nil)
 

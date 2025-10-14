@@ -2,5 +2,6 @@
   :author "Bruno Dias"
   :serial t
   :depends-on (#:fiveam
-               #:arr)
+               #:arr
+               #:bordeaux-threads)
   :components ((:file "test")))
