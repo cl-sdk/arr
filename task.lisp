@@ -5,7 +5,7 @@
   (mailbox nil :type sb-concurrency:mailbox)
   (running t :type boolean)
   (main-worker nil :type (or bt2:thread null))
-  (delayed-queue nil :type sb-concurrency:queue))
+  (scheduled-tasks-queue nil :type sb-concurrency:queue))
 
 (defun task-runner-running-p (state)
   (not (null (task-runner-state-running state))))
@@ -24,7 +24,7 @@
   (with-task-runner-state-lock +runner+
     (sb-concurrency:send-message
      (task-runner-state-mailbox +runner+)
-     (list :delayed time kind data))))
+     (list :scheduled-tasks time kind data))))
 
 (defgeneric task-execute (kind data &key time &allow-other-keys)
   (:documentation "Tasks can be both a function (to be implemented)

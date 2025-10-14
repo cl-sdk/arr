@@ -7,15 +7,15 @@
    - (:start) - start receiving the execution
    - (:stop) - stop the execution
    - (:immediate data) - goes to the immediate queue.
-   - (:delayed time data) - goes to the scheduled queue."
+   - (:scheduled-tasks time data) - goes to the scheduled queue."
   (labels ((thread-sleep () (sleep .1) (bt2:thread-yield))
            (process-message (state current-time command)
              (case (car command)
                (:immediate (task-execute (second command) (third command)
                                          :time current-time))
-               (:delayed (sb-concurrency:enqueue
+               (:scheduled-tasks (sb-concurrency:enqueue
                           (cdr command)
-                          (task-runner-state-delayed-queue state))))))
+                          (task-runner-state-scheduled-tasks-queue state))))))
     (let ((current-time (get-universal-time)))
       (loop
         (handler-case
@@ -29,7 +29,7 @@
                       (process-message state
                                        current-time
                                        (sb-concurrency:receive-message m))))
-                (let ((queue (task-runner-state-delayed-queue state))
+                (let ((queue (task-runner-state-scheduled-tasks-queue state))
                       (next-queue))
                   (loop for task = (sb-concurrency:dequeue queue)
                         while task
@@ -54,7 +54,7 @@
            :lock (sb-thread:make-mutex)
            :mailbox (sb-concurrency:make-mailbox :name "task-runner-main-thread-mailbox")
            :main-worker nil
-           :delayed-queue (sb-concurrency:make-queue :name "task-runner-delayed-queue"))
+           :scheduled-tasks-queue (sb-concurrency:make-queue :name "task-runner-scheduled-tasks-queue"))
           (task-runner-state-main-worker +runner+)
           (bt2:make-thread (lambda () (%runner +runner+))))
     t))
