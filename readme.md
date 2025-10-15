@@ -1,7 +1,5 @@
 # arr[^1]
 
----
-
 ![arr](https://raw.githubusercontent.com/cl-sdk/arr/refs/heads/main/assets/github-banner.png "arr")
 
 Common lisp background workers, eventually a task queue and task orchestration (coordination).
