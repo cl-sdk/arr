@@ -12,6 +12,7 @@
         systemInputs = with pkgs; [pkg-config
                                    openssl
                                    libev
+                                   sqlite
                                    postgresql_16_jit
                                    pgformatter
                                    pgcli
@@ -26,6 +27,7 @@
  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${pkgs.lib.makeLibraryPath[
    pkgs.openssl
    pkgs.libev
+   pkgs.sqlite
    pkgs.postgresql_16_jit
  ]};
  '';
