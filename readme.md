@@ -1,6 +1,6 @@
 # arr
 
-![arr](https://raw.githubusercontent.com/cl-sdk/arr/refs/heads/POC/assets/github-banner.png "arr")
+![arr](https://raw.githubusercontent.com/cl-sdk/arr/refs/heads/main/assets/github-banner.png "arr")
 
 Common lisp background workers, eventually a task queue and task orchestration (coordination).
 
@@ -8,4 +8,4 @@ Common lisp background workers, eventually a task queue and task orchestration (
 
 Unlicense.
 
-See [license](https://github.com/cl-sdk/arr/blob/poc/license).
+See [license](https://github.com/cl-sdk/arr/blob/main/license).
