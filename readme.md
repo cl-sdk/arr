@@ -62,7 +62,7 @@ Just like `task-runner`, `task-scheduler` is the engine of the scheduling and qu
 ```lisp
 (defgeneric schedule-task (kind scheduled-time data &key app &allow-other-keys))
 ```
-2
+
 As an example, to schedule a immediate or a scheduled (timed) task:
 
 ```lisp
