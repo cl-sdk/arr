@@ -87,7 +87,7 @@ As an example, to schedule a immediate or a scheduled (timed) task:
 
 ---
 
-# License
+## License
 
 [Unlicense](https://github.com/cl-sdk/arr/blob/main/license)
 
