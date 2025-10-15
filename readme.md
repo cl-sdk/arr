@@ -89,8 +89,6 @@ As an example, to schedule a immediate or a scheduled (timed) task:
 
 # License
 
-Unlicense.
-
-See [license](https://github.com/cl-sdk/arr/blob/main/license).
+[Unlicense](https://github.com/cl-sdk/arr/blob/main/license)
 
 [^1]: `arr` is the name of the function of the haskell's `Control.Arrows` package, that lifts a pure function into a computation.
