@@ -4,4 +4,5 @@
   :depends-on (#:fiveam
                #:arr
                #:bordeaux-threads)
-  :components ((:file "test")))
+  :components ((:module "arr"
+                :components ((:file "test")))))

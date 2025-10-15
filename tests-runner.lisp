@@ -3,7 +3,7 @@
 
 (push *default-pathname-defaults* ql:*local-project-directories*)
 
-(ql:quickload :arr.test)
+(ql:quickload '(:arr.test :arr.background-worker.test))
 
 (defun run-tests (coverage)
   (5am:run-all-tests)

@@ -1,4 +1,10 @@
-(in-package :arr)
+(defpackage #:arr.background-worker
+  (:use #:cl)
+  (:export
+   #:stop-application
+   #:start-application))
+
+(in-package :arr.background-worker)
 
 (defparameter +runner+ nil
   "Global instance of the task-runner.")
@@ -20,29 +26,29 @@
   `(sb-thread:with-mutex ((background-worker-lock ,var))
      ,@body))
 
-(defmethod schedule-task ((kind (eql :immediate))
-                          scheduled-time
-                          data
-                          &key
-                            app
-                          &allow-other-keys)
+(defmethod arr:schedule-task ((kind (eql :immediate))
+                              scheduled-time
+                              data
+                              &key
+                                app
+                              &allow-other-keys)
   (sb-concurrency:enqueue
    (list scheduled-time scheduled-time data)
    (background-worker-queue app)))
 
-(defmethod schedule-task ((kind (eql :scheduled-tasks))
-                          scheduled-time
-                          data
-                          &key
-                            app
-                          &allow-other-keys)
+(defmethod arr:schedule-task ((kind (eql :scheduled-tasks))
+                              scheduled-time
+                              data
+                              &key
+                                app
+                              &allow-other-keys)
   (setf
    (background-worker-scheduled-tasks-queue app)
    (append
     (list (list scheduled-time (car data) (cdr data)))
     (background-worker-scheduled-tasks-queue app))))
 
-(defmethod task-runner ((app background-worker) &key &allow-other-keys)
+(defmethod arr:task-runner ((app background-worker) &key &allow-other-keys)
   (labels ((thread-sleep () (sleep .1)))
     (loop
       (handler-case
@@ -50,12 +56,12 @@
                 while task
                 do (destructuring-bind (scheduled-time time (kind &rest data))
                        task
-                     (task kind data :time time)))
+                     (arr:task kind data :time time)))
         (t (err)
           (log:error "[arr:runner] ~A" err)))
       (thread-sleep))))
 
-(defmethod task-scheduler ((app background-worker) &key &allow-other-keys)
+(defmethod arr:task-scheduler ((app background-worker) &key &allow-other-keys)
   "Private scheduler function to manage tasks.
 
  It controls time and schedule tasks to be executed.
@@ -70,8 +76,8 @@
            (schedule (app current-time)
              (let ((m (background-worker-mailbox app)))
                (loop for task in (sb-concurrency:receive-pending-messages m)
-                     do (schedule-task (car task) current-time (cdr task)
-                                       :app app))))
+                     do (arr:schedule-task (car task) current-time (cdr task)
+                                           :app app))))
            (dispatch (app current-time)
              (setf
               (background-worker-scheduled-tasks-queue app)
@@ -97,21 +103,21 @@
           (t (err)
             (log:error "[arr:scheduler] ~A" err)))))))
 
-(defmethod execute-task ((app (eql :background-worker)) task &optional data)
+(defmethod arr:execute-task ((app (eql :background-worker)) task &optional data)
   "Public function to enqueue a task."
   (with-background-worker-lock +runner+
     (sb-concurrency:send-message
      (background-worker-mailbox +runner+)
      (list :immediate task data))))
 
-(defmethod execute-task-at ((app (eql :background-worker)) time task &optional data)
+(defmethod arr:execute-task-at ((app (eql :background-worker)) time task &optional data)
   "Public function to enqueue a scheduled task."
   (with-background-worker-lock +runner+
     (sb-concurrency:send-message
      (background-worker-mailbox +runner+)
      (list :scheduled-tasks time task data))))
 
-(defun start-background-worker ()
+(defun start-application ()
   "Start the global state and thread."
   (when (not +runner+)
     (setf +runner+
@@ -120,12 +126,12 @@
            :mailbox (sb-concurrency:make-mailbox :name "task-runner-main-thread-mailbox")
            :queue (sb-concurrency:make-queue :name "task-runner-queue"))
           (background-worker-main-worker +runner+)
-          (bt2:make-thread (lambda () (funcall #'task-scheduler +runner+)))
+          (bt2:make-thread (lambda () (funcall #'arr:task-scheduler +runner+)))
           (background-worker-worker +runner+)
-          (bt2:make-thread (lambda () (funcall #'task-runner +runner+))))
+          (bt2:make-thread (lambda () (funcall #'arr:task-runner +runner+))))
     t))
 
-(defun stop-background-worker ()
+(defun stop-application ()
   "Stop the global state and thread."
   (when +runner+
     (sb-thread:with-mutex ((background-worker-lock +runner+))

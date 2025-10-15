@@ -6,6 +6,6 @@
                #:bordeaux-threads
                #:local-time
                #:log4cl)
-  :components ((:file "package")
-               (:file "generics")
-               (:file "background-workers")))
+  :components ((:module "arr"
+                :components ((:file "package")
+                             (:file "generics")))))
