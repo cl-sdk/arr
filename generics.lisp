@@ -1,24 +1,44 @@
 (in-package :arr)
 
 (defgeneric task (kind data &key time &allow-other-keys)
-  (:documentation "Implementation of a task."))
+  (:documentation "Defines the implementation of a task to be executed.
 
-(defgeneric schedule-task (kind scheduled-time data &key state &allow-other-keys)
-  (:documentation "Implement this function to create a new way
- to schedule a task."))
+`kind` identifies the type of task (e.g., :email, :cleanup, etc.).
+`data` contains task-specific parameters.
+`time` represents the execution time if provided."))
 
-(defgeneric task-runner (state &key &allow-other-keys)
-  (:documentation "Private runner worker function to execute tasks.
- Tasks are in the form (scheduled-time time kind &rest data)"))
+(defgeneric schedule-task (kind scheduled-time data &key app &allow-other-keys)
+  (:documentation "Schedules a task to be executed at a specific time.
 
-(defgeneric task-scheduler (state &key &allow-other-keys)
-  (:documentation "Private scheduler function to manage tasks.
+`kind` identifies the task type.
+`scheduled-time` specifies when the task should run.
+`data` provides the task payload or arguments.
+`state` is an optional context object used by the scheduler.
 
- It controls time and schedule tasks to be executed.
+Implement this method to define custom scheduling behavior or
+to integrate with external systems (e.g., queues, cron, or message brokers)."))
 
- Task can be:
+(defgeneric task-runner (app &key &allow-other-keys)
+  (:documentation "Internal worker function responsible for executing tasks.
 
-   - (:immediate data) - goes to the immediate queue.
-   - (:scheduled-tasks time data) - goes to the scheduled queue.
+This function processes tasks in the form:
 
- `data` is an implementation of the generic `arr:task-execute`."))
+  (scheduled-time time kind &rest data)
+
+It should be specialized to perform the actual task execution
+loop or worker logic appropriate for your system."))
+
+(defgeneric task-scheduler (app &key &allow-other-keys)
+  (:documentation "Internal scheduler function responsible for managing task timing and dispatch.
+
+It controls when tasks are moved from the scheduled queue to
+the execution queue.
+
+Implement this method to define how scheduling and timing are
+handled (e.g., polling, event-driven, or hybrid approaches)."))
+
+(defgeneric execute-task (app task &optional data)
+  (:documentation "Public function to enqueue a task."))
+
+(defgeneric execute-task-at (app time task &optional data)
+  (:documentation "Public function to enqueue a scheduled task."))

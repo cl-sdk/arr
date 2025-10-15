@@ -8,5 +8,4 @@
                #:log4cl)
   :components ((:file "package")
                (:file "generics")
-               (:file "task")
                (:file "background-workers")))

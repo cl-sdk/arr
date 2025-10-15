@@ -1,13 +1,13 @@
 (defpackage #:arr
   (:use #:cl)
   (:export
-   #:start-thread
-   #:stop-thread
    #:execute-task
    #:execute-task-at
    #:task
    #:schedule-task
    #:task-runner
-   #:task-scheduler))
+   #:task-scheduler
+   #:start-background-worker
+   #:stop-background-worker))
 
 (in-package :arr)
