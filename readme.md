@@ -62,7 +62,7 @@ Just like `task-runner`, `task-scheduler` is the engine of the scheduling and qu
 ```lisp
 (defgeneric schedule-task (kind scheduled-time data &key app &allow-other-keys))
 ```
-
+2
 As an example, to schedule a immediate or a scheduled (timed) task:
 
 ```lisp
@@ -92,7 +92,5 @@ As an example, to schedule a immediate or a scheduled (timed) task:
 Unlicense.
 
 See [license](https://github.com/cl-sdk/arr/blob/main/license).
-
----
 
 [^1]: `arr` is the name of the function of the haskell's `Control.Arrows` package, that lifts a pure function into a computation.
