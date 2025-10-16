@@ -9,4 +9,4 @@
   :components ((:module "arr"
                 :components ((:file "package")
                              (:file "types")
-                             (:file "generics")))))
+                             (:file "api")))))
