@@ -6,9 +6,6 @@
 
 (in-package :arr.background-worker)
 
-(defparameter +runner+ nil
-  "Global instance of the task-runner.")
-
 (defstruct background-worker
   (lock nil :type sb-thread:mutex)
   (queue nil :type sb-concurrency:queue)
@@ -34,7 +31,8 @@
                               &allow-other-keys)
   (sb-concurrency:enqueue
    (list scheduled-time scheduled-time data)
-   (background-worker-queue app)))
+   (background-worker-queue app))
+  t)
 
 (defmethod arr:schedule-task ((kind (eql :scheduled-tasks))
                               scheduled-time
@@ -46,7 +44,8 @@
    (background-worker-scheduled-tasks-queue app)
    (append
     (list (list scheduled-time (car data) (cdr data)))
-    (background-worker-scheduled-tasks-queue app))))
+    (background-worker-scheduled-tasks-queue app)))
+  t)
 
 (defmethod arr:task-runner ((app background-worker) &key &allow-other-keys)
   (labels ((thread-sleep () (sleep .1)))
@@ -103,46 +102,44 @@
           (t (err)
             (log:error "[arr:scheduler] ~A" err)))))))
 
-(defmethod arr:execute-task ((app (eql :background-worker)) task &optional data)
+(defmethod arr:execute-task ((app background-worker) task &optional data)
   "Public function to enqueue a task."
-  (with-background-worker-lock +runner+
+  (with-background-worker-lock app
     (sb-concurrency:send-message
-     (background-worker-mailbox +runner+)
+     (background-worker-mailbox app)
      (list :immediate task data))))
 
-(defmethod arr:execute-task-at ((app (eql :background-worker)) time task &optional data)
+(defmethod arr:execute-task-at ((app background-worker) time task &optional data)
   "Public function to enqueue a scheduled task."
-  (with-background-worker-lock +runner+
+  (with-background-worker-lock app
     (sb-concurrency:send-message
-     (background-worker-mailbox +runner+)
+     (background-worker-mailbox app)
      (list :scheduled-tasks time task data))))
 
 (defun start-application (&key (number-of-workers 1))
   "Start the global state and thread."
   (if (< number-of-workers 1)
       (error "number of workers must be greater than 0."))
-  (when (not +runner+)
-    (setf +runner+
-          (make-background-worker
-           :lock (sb-thread:make-mutex)
-           :mailbox (sb-concurrency:make-mailbox :name "task-runner-main-thread-mailbox")
-           :queue (sb-concurrency:make-queue :name "task-runner-queue"))
-          (background-worker-main-worker +runner+)
-          (bt2:make-thread (lambda () (funcall #'arr:task-scheduler +runner+))
+  (let ((app (make-background-worker
+              :lock (sb-thread:make-mutex)
+              :mailbox (sb-concurrency:make-mailbox :name "task-runner-main-thread-mailbox")
+              :queue (sb-concurrency:make-queue :name "task-runner-queue"))))
+    (setf (background-worker-main-worker app)
+          (bt2:make-thread (lambda () (funcall #'arr:task-scheduler app))
                            :name "arr-scheduler-thread")
-          (background-worker-workers-pool +runner+)
+          (background-worker-workers-pool app)
           (loop for x upto number-of-workers from 1
-                collect (bt2:make-thread (lambda () (funcall #'arr:task-runner +runner+))
+                collect (bt2:make-thread (lambda () (funcall #'arr:task-runner app))
                                          :name (format nil "arr-runner-thread-~a" x))))
-    t))
+    app))
 
-(defun stop-application ()
+(defun stop-application (app)
   "Stop the global state and thread."
-  (when +runner+
-    (sb-thread:with-mutex ((background-worker-lock +runner+))
-      (setf (background-worker-running +runner+) nil)
-      (loop for runner in (background-worker-workers-pool +runner+)
+  (when app
+    (sb-thread:with-mutex ((background-worker-lock app))
+      (setf (background-worker-running app) nil)
+      (loop for runner in (background-worker-workers-pool app)
             do (bt2:destroy-thread runner))
-      (bt2:destroy-thread (background-worker-main-worker +runner+))
-      (setf +runner+ nil))
+      (bt2:destroy-thread (background-worker-main-worker app))
+      (setf app nil))
     t))
