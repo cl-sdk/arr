@@ -118,7 +118,7 @@
 
 (defun start-application (&key (number-of-workers 1))
   "Start the global state and thread."
-  (if (< number-of-workers 1)
+  (when (< number-of-workers 1)
       (error "number of workers must be greater than 0."))
   (let ((app (make-background-worker
               :lock (sb-thread:make-mutex)

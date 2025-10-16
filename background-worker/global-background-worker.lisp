@@ -19,8 +19,8 @@
 
 (defun start-application (&key (number-of-workers 1))
   "Start the global state and thread."
-  (if (< number-of-workers 1)
-      (error "number of workers must be greater than 0."))
+  (when (< number-of-workers 1)
+    (error "number of workers must be greater than 0."))
   (setf +app+ (arr.background-worker:start-application
                :number-of-workers number-of-workers))
   t)
