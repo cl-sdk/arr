@@ -15,7 +15,7 @@
   (mailbox nil :type sb-concurrency:mailbox)
   (running t :type boolean)
   (main-worker nil :type (or bt2:thread null))
-  (worker nil :type (or bt2:thread null))
+  (workers-pool nil :type list)
   (scheduled-tasks-queue nil :type list))
 
 (defun task-runner-running-p (state)
@@ -117,8 +117,10 @@
      (background-worker-mailbox +runner+)
      (list :scheduled-tasks time task data))))
 
-(defun start-application ()
+(defun start-application (&key (number-of-workers 1))
   "Start the global state and thread."
+  (if (< number-of-workers 1)
+      (error "number of workers must be greater than 0."))
   (when (not +runner+)
     (setf +runner+
           (make-background-worker
@@ -126,9 +128,12 @@
            :mailbox (sb-concurrency:make-mailbox :name "task-runner-main-thread-mailbox")
            :queue (sb-concurrency:make-queue :name "task-runner-queue"))
           (background-worker-main-worker +runner+)
-          (bt2:make-thread (lambda () (funcall #'arr:task-scheduler +runner+)))
-          (background-worker-worker +runner+)
-          (bt2:make-thread (lambda () (funcall #'arr:task-runner +runner+))))
+          (bt2:make-thread (lambda () (funcall #'arr:task-scheduler +runner+))
+                           :name "arr-scheduler-thread")
+          (background-worker-workers-pool +runner+)
+          (loop for x upto number-of-workers from 1
+                collect (bt2:make-thread (lambda () (funcall #'arr:task-runner +runner+))
+                                         :name (format nil "arr-runner-thread-~a" x))))
     t))
 
 (defun stop-application ()
@@ -136,7 +141,8 @@
   (when +runner+
     (sb-thread:with-mutex ((background-worker-lock +runner+))
       (setf (background-worker-running +runner+) nil)
-      (bt2:destroy-thread (background-worker-worker +runner+))
+      (loop for runner in (background-worker-workers-pool +runner+)
+            do (bt2:destroy-thread runner))
       (bt2:destroy-thread (background-worker-main-worker +runner+))
       (setf +runner+ nil))
     t))

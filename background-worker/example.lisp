@@ -3,12 +3,19 @@
 
 (in-package :arr.background-worker.example)
 
-(arr.background-worker:start-application)
+(defparameter +web-server-thread+ nil)
+(defparameter +woo-web-server+ nil)
 
 (defvar +database-path+ "./background-worker-todo-example.db")
+
 (defvar +connection+ (sqlite:connect +database-path+ :busy-timeout 2000))
 
 (sqlite:execute-single +connection+ "CREATE TABLE IF NOT EXISTS todo (id text, title text)")
+
+(defun get-request-content (env)
+  (flexi-streams:octets-to-string
+   (flex::vector-stream-vector (getf env :raw-body))
+   :external-format :utf-8))
 
 (defmethod arr:task ((kind (eql :create-todo)) data &key time &allow-other-keys)
   (destructuring-bind (id title)
@@ -19,19 +26,13 @@
   (sqlite:execute-single +connection+ "DELETE FROM todo where id = ?" (caar data)))
 
 (defun create-todo (env)
-  (let ((title (flexi-streams:octets-to-string
-                (flex::vector-stream-vector (getf env :raw-body))
-                :external-format :utf-8))
+  (let ((title (get-request-content env))
         (id (fuuid:make-v4-string)))
-    (log:info title)
     (arr:execute-task :background-worker :create-todo (list id title))
     id))
 
 (defun delete-todo (env)
-  (let ((id (flexi-streams:octets-to-string
-             (flex::vector-stream-vector (getf env :raw-body))
-             :external-format :utf-8)))
-    (log:info id)
+  (let ((id (get-request-content env)))
     (arr:execute-task-at :background-worker (+ (get-universal-time) 5) :delete-todo (list id))
     id))
 
@@ -56,18 +57,24 @@
                    )))
     (list 200 '(:content-type "text/plain") (list res))))
 
-(defparameter +web-server-thread+ nil)
-(defparameter +woo-web-server+ nil)
 
-(defun ensure-web-server-running ()
+(defun start ()
+  (arr.background-worker:start-application :number-of-workers 8)
+  (setf +web-server-thread+
+        (bt2:make-thread (lambda ()
+                           (setf +woo-web-server+ (woo:run #'web-server))))))
+
+(defun stop ()
+  (arr.background-worker:stop-application)
   (let ((thread +web-server-thread+))
     (setf +web-server-thread+ nil)
     (when +woo-web-server+
       (woo:stop +woo-web-server+))
     (when thread
-      (bt2:destroy-thread thread)))
-  (setf +web-server-thread+
-        (bt2:make-thread (lambda ()
-                           (setf +woo-web-server+ (woo:run #'web-server))))))
+      (bt2:destroy-thread thread))))
+
+(defun ensure-web-server-running ()
+  (stop)
+  (start))
 
 (ensure-web-server-running)
