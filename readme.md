@@ -17,13 +17,30 @@ There are 2 function to start and stop the background worker:
 #### Start
 
 ```lisp
-(arr.background-worker:start-application)
+(arr.background-worker:start-application &key (number-of-workers 1))
 ```
 
 #### Stop
 
 ```lisp
-(arr.background-worker:stop-application)
+(arr.background-worker:stop-application app)
+```
+
+### `arr.global-background-worker`
+
+Same as `arr.background-worker`, but the state is controlled internally 
+on this package.
+
+#### Start
+
+```lisp
+(arr.global-background-worker:start-application &key (number-of-workers 1))
+```
+
+#### Stop
+
+```lisp
+(arr.global-background-worker:stop-application)
 ```
 
 ### Custom implementation
