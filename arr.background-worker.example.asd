@@ -6,7 +6,7 @@
                #:frugal-uuid
                #:arr
                #:bordeaux-threads
-               #:arr.background-worker
+               #:arr.global-background-worker
                #:sqlite
                #:woo)
   :components ((:module "background-worker"

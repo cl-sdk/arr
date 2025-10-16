@@ -1,44 +1,92 @@
 (in-package :arr)
 
-(defgeneric task (kind data &key time &allow-other-keys)
-  (:documentation "Defines the implementation of a task to be executed.
+(defgeneric task (task-name task-data &key time &allow-other-keys)
+  (:documentation
+   "Defines how a specific task identified by TASK-NAME is executed.
+Each method specialized on TASK-NAME implements the behavior of that task,
+using TASK-DATA as input. The optional TIME argument may indicate when the
+task is being executed or provide scheduling context.
 
-`kind` identifies the type of task (e.g., :email, :cleanup, etc.).
-`data` contains task-specific parameters.
-`time` represents the execution time if provided."))
+Arguments:
+  TASK-NAME — keyword identifying the task (e.g. :send-email, :cleanup-cache).
+  TASK-DATA — arbitrary data required for executing the task.
+  :TIME — optional time context for the execution (creation, scheduling, or run time).
 
-(defgeneric schedule-task (kind scheduled-time data &key app &allow-other-keys)
-  (:documentation "Schedules a task to be executed at a specific time.
+Returns:
+  The result of executing the task, which depends on the implementation."))
 
-`kind` identifies the task type.
-`scheduled-time` specifies when the task should run.
-`data` provides the task payload or arguments.
-`state` is an optional context object used by the scheduler.
+(defgeneric schedule-task (data-source scheduled-time task &key app &allow-other-keys)
+  (:documentation
+   "Schedules TASK to be executed at SCHEDULED-TIME and stores it in DATA-SOURCE.
+DATA-SOURCE is a storage system maintaining all scheduled tasks. APP is an optional
+application context providing configuration or logging.
 
-Implement this method to define custom scheduling behavior or
-to integrate with external systems (e.g., queues, cron, or message brokers)."))
+Arguments:
+  DATA-SOURCE — task storage or queue system.
+  SCHEDULED-TIME — time when the task should execute.
+  TASK — task object as created by `task`.
+  :APP — optional application context."))
+
+(defgeneric enqueue-task (data-source task &key app &allow-other-keys)
+  (:documentation
+   "Adds TASK to the task queue within DATA-SOURCE.
+Used for immediate or deferred execution depending on system policy.
+
+Arguments:
+  DATA-SOURCE — storage or queue manager.
+  TASK — task object to enqueue.
+  :APP — optional application context."))
+
+(defgeneric dequeue-task (data-source &key app &allow-other-keys)
+  (:documentation
+   "Removes and returns the next available task from DATA-SOURCE’s queue.
+If no task is available, returns NIL.
+
+Arguments:
+  DATA-SOURCE — queue or storage system holding pending tasks.
+  :APP — optional application context.
+
+Returns:
+  A task or NIL when empty."))
 
 (defgeneric task-runner (app &key &allow-other-keys)
-  (:documentation "Internal worker function responsible for executing tasks.
+  (:documentation
+   "Main loop responsible for executing tasks for APP.
+ The task-runner continuously (or periodically) dequeues pending tasks and
+ executes them via `task` when they are read to be executed. It may serve
+ as the core dispatcher, background worker, or event-driven processor.
 
-This function processes tasks in the form:
-
-  (scheduled-time time kind &rest data)
-
-It should be specialized to perform the actual task execution
-loop or worker logic appropriate for your system."))
+ Arguments:
+   APP — application context holding configuration and data source access."))
 
 (defgeneric task-scheduler (app &key &allow-other-keys)
-  (:documentation "Internal scheduler function responsible for managing task timing and dispatch.
+  (:documentation
+   "Coordinates task scheduling for APP.
+ Used to determine when and how a task is enqueued over time.
 
-It controls when tasks are moved from the scheduled queue to
-the execution queue.
+ Arguments:
+   APP — application context with access to configuration and data source."))
 
-Implement this method to define how scheduling and timing are
-handled (e.g., polling, event-driven, or hybrid approaches)."))
+(defgeneric execute-task (app task-name &optional data)
+  (:documentation
+   "Enqueue in application APP a specific task identified
+ by TASK-NAME immediately.
+ Dispatches to the appropriate method based on the task type.
 
-(defgeneric execute-task (app task &optional data)
-  (:documentation "Public function to enqueue a task."))
+Arguments:
+  APP — application context.
+  TASK-NAME — keyword identifying the task.
+  DATA — optional data payload for task execution."))
 
-(defgeneric execute-task-at (app time task &optional data)
-  (:documentation "Public function to enqueue a scheduled task."))
+(defgeneric execute-task-at (app time task-name &optional data)
+  (:documentation
+   "Enqueue in application APP a specific task identified
+ by TASK-NAME at the specified TIME.
+If TIME is in the future, the task may be scheduled for later execution;
+if TIME is now or in the past, it is executed immediately.
+
+Arguments:
+  APP — application context.
+  TIME — when to execute the task.
+  TASK-NAME — keyword name of the task.
+  DATA — optional payload for execution."))

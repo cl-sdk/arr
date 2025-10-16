@@ -17,23 +17,23 @@
    (flex::vector-stream-vector (getf env :raw-body))
    :external-format :utf-8))
 
-(defmethod arr:task ((kind (eql :create-todo)) data &key time &allow-other-keys)
+(defmethod arr:task ((kind (eql :create-todo)) task &key time &allow-other-keys)
   (destructuring-bind (id title)
-      (car data)
+      (car task)
     (sqlite:execute-single +connection+ "INSERT INTO todo (id, title) values (?, ?)" id title)))
 
-(defmethod arr:task ((kind (eql :delete-todo)) data &key time &allow-other-keys)
-  (sqlite:execute-single +connection+ "DELETE FROM todo where id = ?" (caar data)))
+(defmethod arr:task ((kind (eql :delete-todo)) task &key time &allow-other-keys)
+  (sqlite:execute-single +connection+ "DELETE FROM todo where id = ?" (caar task)))
 
 (defun create-todo (env)
   (let ((title (get-request-content env))
         (id (fuuid:make-v4-string)))
-    (arr:execute-task :background-worker :create-todo (list id title))
+    (arr:execute-task :global-background-worker :create-todo (list id title))
     id))
 
 (defun delete-todo (env)
   (let ((id (get-request-content env)))
-    (arr:execute-task-at :background-worker (+ (get-universal-time) 5) :delete-todo (list id))
+    (arr:execute-task-at :global-background-worker (+ (get-universal-time) 5) :delete-todo (list id))
     id))
 
 (defun get-all-todos (env)
@@ -50,22 +50,21 @@
 
 (defun web-server (env)
   (let ((res (progn
-                   (case (getf env :request-method)
-                     (:POST (funcall #'create-todo env))
-                     (:DELETE (funcall #'delete-todo env))
-                     (:GET (funcall #'get-all-todos env)))
-                   )))
+               (case (getf env :request-method)
+                 (:POST (funcall #'create-todo env))
+                 (:DELETE (funcall #'delete-todo env))
+                 (:GET (funcall #'get-all-todos env))))))
     (list 200 '(:content-type "text/plain") (list res))))
 
-
 (defun start ()
-  (arr.background-worker:start-application :number-of-workers 8)
+  (arr.global-background-worker:start-application
+   :number-of-workers 8)
   (setf +web-server-thread+
         (bt2:make-thread (lambda ()
                            (setf +woo-web-server+ (woo:run #'web-server))))))
 
 (defun stop ()
-  (arr.background-worker:stop-application)
+  (arr.global-background-worker:stop-application)
   (let ((thread +web-server-thread+))
     (setf +web-server-thread+ nil)
     (when +woo-web-server+

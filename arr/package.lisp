@@ -6,6 +6,8 @@
    #:task-runner
    #:task-scheduler
    #:execute-task
-   #:execute-task-at))
+   #:execute-task-at
+   #:enqueue-task
+   #:dequeue-task))
 
 (in-package :arr)

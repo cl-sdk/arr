@@ -11,11 +11,13 @@
 
 (defmethod arr:execute-task ((app (eql :global-background-worker)) task &optional data)
   "Public function to enqueue a task."
-  (arr:execute-task +app+ task data))
+  (assert (not (null +app+)))
+  (arr:execute-task +app+ task-name data))
 
-(defmethod arr:execute-task-at ((app (eql :global-background-worker)) time task &optional data)
+(defmethod arr:execute-task-at ((app (eql :global-background-worker)) time task-name &optional data)
   "Public function to enqueue a scheduled task."
-  (arr:execute-task-at +app+ task data))
+  (assert (not (null +app+)))
+  (arr:execute-task-at +app+ time task-name data))
 
 (defun start-application (&key (number-of-workers 1))
   "Start the global state and thread."

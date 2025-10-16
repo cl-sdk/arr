@@ -28,7 +28,7 @@ There are 2 function to start and stop the background worker:
 
 ### `arr.global-background-worker`
 
-Same as `arr.background-worker`, but the state is controlled internally 
+Same as `arr.background-worker`, but the state is controlled internally
 on this package.
 
 #### Start
@@ -54,10 +54,20 @@ All the generics are available in other to build your worker.
 It is (supposed) a stateless function that is fire and forget.
 
 ```lisp
-(defgeneric task (kind data &key time &allow-other-keys))
+(defgeneric task (task-name task-data &key time &allow-other-keys))
 ```
 
-#### Scheduler and runner worker function
+#### Scheduler, enqueueing, dequeueing and runner worker function
+
+`enqueue-task` and `dequeue-task` especified by the data store implementation.
+
+```lisp
+(defgeneric enqueue-task (data-source task &key app &allow-other-keys))
+```
+
+```lisp
+(defgeneric dequeue-task (data-source &key app &allow-other-keys))
+```
 
 `task-runner` is the engine of the dispatcher worker. At this moment, all tasks, immediate or schedules, are ready to dispatch.
 
@@ -77,29 +87,17 @@ Just like `task-runner`, `task-scheduler` is the engine of the scheduling and qu
 - Task data
 
 ```lisp
-(defgeneric schedule-task (kind scheduled-time data &key app &allow-other-keys))
-```
-
-As an example, to schedule a immediate or a scheduled (timed) task:
-
-```lisp
-(defmethod schedule-task ((kind (eql :immeditate) scheduled-time data &key app &allow-other-keys)
-  ;; ...
-  )
-
-(defmethod schedule-task ((kind (eql :scheduled-task) scheduled-time data &key app &allow-other-keys)
-  ;;...
-  )
+(defgeneric schedule-task (data-source scheduled-time task &key app &allow-other-keys))
 ```
 
 ##### Enqueueing tasks
 
 ```lisp
-(defgeneric execute-task (app task &optional data))
+(defgeneric execute-task (app task-name &optional data))
 ```
 
 ```lisp
-(defgeneric execute-task-at (app time task &optional data))
+(defgeneric execute-task-at (app time task-name &optional data))
 ```
 
 ---
