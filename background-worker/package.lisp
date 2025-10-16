@@ -6,9 +6,7 @@
 
 (in-package :arr.background-worker)
 
-(defclass queue-data-source () ())
-
-(defclass in-memory-queue (queue-data-source)
+(defclass in-memory-queue (arr:queue-data-source)
   ((queue :initarg :queue :type sb-concurrency:queue)))
 
 (defstruct background-worker

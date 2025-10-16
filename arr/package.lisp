@@ -8,6 +8,7 @@
    #:execute-task
    #:execute-task-at
    #:enqueue-task
-   #:dequeue-task))
+   #:dequeue-task
+   #:queue-data-source))
 
 (in-package :arr)
