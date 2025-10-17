@@ -7,6 +7,7 @@
                #:arr
                #:bordeaux-threads
                #:arr.global-background-worker
+               #:arr.in-memory-queue
                #:sqlite
                #:woo)
   :components ((:module "background-worker"

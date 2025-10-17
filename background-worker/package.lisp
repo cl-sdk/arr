@@ -6,8 +6,6 @@
 
 (in-package :arr.background-worker)
 
-(defclass in-memory-queue (arr:queue-data-source)
-  ((queue :initarg :queue :type sb-concurrency:queue)))
 
 (defstruct background-worker
   (lock nil :type sb-thread:mutex)
@@ -24,28 +22,6 @@
 (defmacro with-background-worker-lock (var &body body)
   `(sb-thread:with-mutex ((background-worker-lock ,var))
      ,@body))
-
-(defmethod arr:dequeue-task ((data-source in-memory-queue) &key &allow-other-keys)
-  (with-slots (queue)
-      data-source
-    (sb-concurrency:dequeue queue)))
-
-(defmethod arr:enqueue-task ((data-source in-memory-queue) task &key app &allow-other-keys)
-  (with-slots (queue)
-      data-source
-    (sb-concurrency:enqueue task queue)))
-
-(defmethod arr:schedule-task ((data-source in-memory-queue)
-                              scheduled-time
-                              data
-                              &key
-                                app
-                              &allow-other-keys)
-  (arr:enqueue-task
-   (background-worker-data-source app)
-   (cons scheduled-time data)
-   :app app)
-  t)
 
 (defmethod arr:task-runner ((app background-worker) &key &allow-other-keys)
   (labels ((thread-sleep () (sleep .1)))
@@ -109,15 +85,17 @@
      (background-worker-mailbox app)
      (list time task-name data))))
 
-(defun start-application (&key (number-of-workers 1))
+(defun start-application (&key
+                            (number-of-workers 1)
+                            data-source)
   "Start the global state and thread."
+  (assert (not (null data-source)))
   (when (< number-of-workers 1)
     (error "number of workers must be greater than 0."))
   (let ((app (make-background-worker
               :lock (sb-thread:make-mutex)
               :mailbox (sb-concurrency:make-mailbox :name "task-runner-main-thread-mailbox")
-              :data-source (make-instance 'in-memory-queue
-                                          :queue (sb-concurrency:make-queue :name "task-runner-queue")))))
+              :data-source data-source)))
     (setf (background-worker-main-worker app)
           (bt2:make-thread (lambda () (funcall #'arr:task-scheduler app))
                            :name "arr-scheduler-thread")

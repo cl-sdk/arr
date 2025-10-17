@@ -19,7 +19,9 @@
   (error "condition raised"))
 
 (5am:def-test enqueue-a-task-to-be-executed-immediately ()
-  (let ((app (arr.background-worker:start-application)))
+  (let ((app (arr.background-worker:start-application
+              :data-source (make-instance 'arr.in-memory-queue:in-memory-queue
+                                          :queue (sb-concurrency:make-queue :name "test-queue")))))
     (5am:is-true (= 0 (bt2:atomic-integer-value *executed*)))
     (arr:execute-task app :increment t)
     (sleep 1)
@@ -28,19 +30,23 @@
     (arr.background-worker:stop-application app)))
 
 (5am:def-test should-not-kill-the-scheduler-thread-on-condition ()
-  (let ((app (arr.background-worker:start-application)))
-   (5am:is-true (= 0 (bt2:atomic-integer-value *executed*)))
-   (arr:execute-task app :raise-condition)
-   (sleep 1)
-   (5am:is-true (= 0 (bt2:atomic-integer-value *executed*)))
-   (arr:execute-task app :increment t)
-   (sleep 1)
-   (5am:is-true (= 1 (bt2:atomic-integer-value *executed*)))
-   (setf *executed* (bt2:make-atomic-integer :value 0))
-   (arr.background-worker:stop-application app)))
+  (let ((app (arr.background-worker:start-application
+              :data-source (make-instance 'arr.in-memory-queue:in-memory-queue
+                                          :queue (sb-concurrency:make-queue :name "test-queue")))))
+    (5am:is-true (= 0 (bt2:atomic-integer-value *executed*)))
+    (arr:execute-task app :raise-condition)
+    (sleep 1)
+    (5am:is-true (= 0 (bt2:atomic-integer-value *executed*)))
+    (arr:execute-task app :increment t)
+    (sleep 1)
+    (5am:is-true (= 1 (bt2:atomic-integer-value *executed*)))
+    (setf *executed* (bt2:make-atomic-integer :value 0))
+    (arr.background-worker:stop-application app)))
 
 (5am:def-test schedule-a-task-for-2-seconds ()
-  (let ((app (arr.background-worker:start-application)))
+  (let ((app (arr.background-worker:start-application
+              :data-source (make-instance 'arr.in-memory-queue:in-memory-queue
+                                          :queue (sb-concurrency:make-queue :name "test-queue")))))
     (5am:is-true (= 0 (bt2:atomic-integer-value *executed*)))
     (arr:execute-task-at app
                          (+ (get-universal-time) 2)
@@ -53,7 +59,9 @@
     (arr.background-worker:stop-application app)))
 
 (5am:def-test schedule-two-tasks-for-2-seconds-at-approximately-same-time ()
-  (let ((app (arr.background-worker:start-application)))
+  (let ((app (arr.background-worker:start-application
+              :data-source (make-instance 'arr.in-memory-queue:in-memory-queue
+                                          :queue (sb-concurrency:make-queue :name "test-queue")))))
     (5am:is-true (= 0 (bt2:atomic-integer-value *executed*)))
     (let ((time (+ (get-universal-time) 2)))
       (arr:execute-task-at app time :increment)
@@ -65,18 +73,20 @@
     (arr.background-worker:stop-application app)))
 
 (5am:def-test schedule-two-tasks-for-2-seconds-and-4-seconds ()
-  (let ((app (arr.background-worker:start-application)))
-   (5am:is-true (= 0 (bt2:atomic-integer-value *executed*)))
-   (arr:execute-task-at app
-                        (+ (get-universal-time) 2)
-                        :increment)
-   (arr:execute-task-at app
-                        (+ (get-universal-time) 4)
-                        :increment)
-   (5am:is-true (= 0 (bt2:atomic-integer-value *executed*)))
-   (sleep 3)
-   (5am:is-true (= 1 (bt2:atomic-integer-value *executed*)))
-   (sleep 4)
-   (5am:is-true (= 2 (bt2:atomic-integer-value *executed*)))
-   (setf *executed* (bt2:make-atomic-integer :value 0))
-   (arr.background-worker:stop-application app)))
+  (let ((app (arr.background-worker:start-application
+              :data-source (make-instance 'arr.in-memory-queue:in-memory-queue
+                                          :queue (sb-concurrency:make-queue :name "test-queue")))))
+    (5am:is-true (= 0 (bt2:atomic-integer-value *executed*)))
+    (arr:execute-task-at app
+                         (+ (get-universal-time) 2)
+                         :increment)
+    (arr:execute-task-at app
+                         (+ (get-universal-time) 4)
+                         :increment)
+    (5am:is-true (= 0 (bt2:atomic-integer-value *executed*)))
+    (sleep 3)
+    (5am:is-true (= 1 (bt2:atomic-integer-value *executed*)))
+    (sleep 4)
+    (5am:is-true (= 2 (bt2:atomic-integer-value *executed*)))
+    (setf *executed* (bt2:make-atomic-integer :value 0))
+    (arr.background-worker:stop-application app)))

@@ -19,12 +19,16 @@
   (assert (not (null +app+)))
   (arr:execute-task-at +app+ time task-name data))
 
-(defun start-application (&key (number-of-workers 1))
+(defun start-application (&key
+                            (number-of-workers 1)
+                            data-source)
   "Start the global state and thread."
+  (assert (not (null data-source)))
   (when (< number-of-workers 1)
     (error "number of workers must be greater than 0."))
   (setf +app+ (arr.background-worker:start-application
-               :number-of-workers number-of-workers))
+               :number-of-workers number-of-workers
+               :data-source data-source))
   t)
 
 (defun stop-application ()

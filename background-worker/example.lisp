@@ -58,7 +58,9 @@
 
 (defun start ()
   (arr.global-background-worker:start-application
-   :number-of-workers 8)
+   :number-of-workers 8
+   :data-source (make-instance 'arr.in-memory-queue:in-memory-queue
+                               :queue (sb-concurrency:make-queue :name "example-queue")))
   (setf +web-server-thread+
         (bt2:make-thread (lambda ()
                            (setf +woo-web-server+ (woo:run #'web-server))))))
