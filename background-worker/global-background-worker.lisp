@@ -9,7 +9,7 @@
 (defparameter +app+ nil
   "Global background worker instance.")
 
-(defmethod arr:execute-task ((app (eql :global-background-worker)) task &optional data)
+(defmethod arr:execute-task ((app (eql :global-background-worker)) task-name &optional data)
   "Public function to enqueue a task."
   (assert (not (null +app+)))
   (arr:execute-task +app+ task-name data))
