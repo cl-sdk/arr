@@ -1,2 +1,5 @@
 *.db
-**/system-index.txt
+.qlot/
+.quicklisp
+.sbclrc
+system-index.txt

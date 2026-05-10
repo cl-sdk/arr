@@ -1,12 +1,13 @@
 ENV?=development
 
-## run through roswell
-LISP?=sbcl
+## NOTE: run sbcl loading the setting the current path
+## on the `ql:*local-project-directories*`.
+LISP?=sbcl --sysinit ./.sbclrc
 
-LISPFLAGS=--quit --non-interactive
+LISPFLAGS=--non-interactive
 
 .PHONY: tests
 tests:
 	ENV=$(ENV) \
 	$(LISP) \
-	$(LISPFLAGS) --load tests-runner.lisp
+	$(LISPFLAGS) --quit --load tests-runner.lisp
